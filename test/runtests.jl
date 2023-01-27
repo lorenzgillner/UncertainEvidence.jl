@@ -16,10 +16,10 @@ m1 = Dict(
     Set("ry") => 0.06,
     Set("rg") => 0.05,
     Set("yg") => 0.04,
-    Set("ryg") => 0.1
+    Set("ryg") => 0.1,
 )
 
-# Second sensor; notice how this one is missing the mass for Ω:
+# Second sensor; notice how this one is missing the mass assignment for Ω:
 m2 = Dict(
     Set("r") => 0.11,
     Set("y") => 0.21,
@@ -31,20 +31,20 @@ m2 = Dict(
 
 # Combined data, rounded to two decimal places
 m12 = Dict(
-    Set(['r'])           => 0.32,
-    Set(['g', 'r'])      => 0.01,
-    Set(['y'])           => 0.33,
-    Set(['g', 'y'])      => 0.01,
+    Set(['r']) => 0.32,
+    Set(['g', 'r']) => 0.01,
+    Set(['y']) => 0.33,
+    Set(['g', 'y']) => 0.01,
     Set(['g', 'y', 'r']) => 0.02,
-    Set(['g'])           => 0.24,
-    Set(['y', 'r'])      => 0.07
+    Set(['g']) => 0.24,
+    Set(['y', 'r']) => 0.07,
 )
 
 mc = combine_dempster(m1, m2)
 
-@test sum(values(dss(m2))) == 1.0
+@test sum(values(distribute(m2))) == 1.0
 @test keys(mc) == keys(m12)
-@test round.(values(mc), digits=2) == collect(values(m12))
+@test round.(values(mc), digits = 2) == collect(values(m12))
 
 # ==================
 # Earthquake Example
@@ -61,7 +61,7 @@ E3 = Ball2([2.5, 2.5], 0.25)
 E4 = Ball2([2.7, 2.5], 0.2)
 
 estimates = [E1, E2, E3, E4]
-masses = fill(1/4, 4)
+masses = fill(1 / 4, 4)
 me = Dict(zip(estimates, masses))
 
 @test bel(B, me) == 0.25
