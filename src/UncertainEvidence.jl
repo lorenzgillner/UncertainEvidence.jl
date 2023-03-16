@@ -1,6 +1,6 @@
 module UncertainEvidence
 
-export bel, pls, distribute, combine_dempster
+export bel, pls, redistribute, combine_dempster
 
 include("dst.jl")
 

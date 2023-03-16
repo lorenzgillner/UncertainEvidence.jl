@@ -3,9 +3,9 @@ using Test
 using LazySets
 using LinearAlgebra
 
-# ==================================
-# Three Color Example from Wikipedia
-# ==================================
+# =====================================
+#  Three Colors Example from Wikipedia
+# =====================================
 # See: https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
 # First sensor
@@ -42,13 +42,13 @@ m12 = Dict(
 
 mc = combine_dempster(m1, m2)
 
-@test sum(values(distribute(m2))) == 1.0
+@test sum(values(redistribute(m2))) == 1.0
 @test keys(mc) == keys(m12)
-@test round.(values(mc), digits = 2) == collect(values(m12))
+@test round.(values(mc), digits=2) == collect(values(m12))
 
-# ==================
-# Earthquake Example
-# ==================
+# ====================
+#  Earthquake Example
+# ====================
 # Inspired by Wang & Klir: "Fuzzy Measure Theory"
 
 # Epicenter of the earthquake
