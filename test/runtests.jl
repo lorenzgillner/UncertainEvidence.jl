@@ -1,7 +1,15 @@
 using UncertainEvidence
+
 using Test
 using LazySets
 using LinearAlgebra
+
+# =====================
+#  Basic Functionality
+# =====================
+
+A = dss(Set("a") => 0.1, Set("b") => 0.2)
+@test A[Set("ab")] == 0.7
 
 # =====================================
 #  Three Colors Example from Wikipedia
@@ -9,7 +17,7 @@ using LinearAlgebra
 # See: https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
 # First sensor
-m1 = Dict(
+m1 = DSS(
     Set("r") => 0.35,
     Set("y") => 0.25,
     Set("g") => 0.15,
@@ -20,7 +28,7 @@ m1 = Dict(
 )
 
 # Second sensor; notice how this one is missing the mass assignment for Ω:
-m2 = Dict(
+m2 = DSS(
     Set("r") => 0.11,
     Set("y") => 0.21,
     Set("g") => 0.33,
@@ -30,20 +38,22 @@ m2 = Dict(
 )
 
 # Combined data, rounded to two decimal places
-m12 = Dict(
-    Set(['r']) => 0.32,
-    Set(['g', 'r']) => 0.01,
-    Set(['y']) => 0.33,
-    Set(['g', 'y']) => 0.01,
-    Set(['g', 'y', 'r']) => 0.02,
-    Set(['g']) => 0.24,
-    Set(['y', 'r']) => 0.07,
+m12 = DSS(
+    Set("r") => 0.32,
+    Set("gr") => 0.01,
+    Set("y") => 0.33,
+    Set("gy") => 0.01,
+    Set("gyr") => 0.02,
+    Set("g") => 0.24,
+    Set("yr") => 0.07,
 )
+
+@test sum(values(redistribute!(m2))) == one(Real)
 
 mc = combine_dempster(m1, m2)
 
-@test sum(values(redistribute(m2))) == 1.0
 @test keys(mc) == keys(m12)
+
 @test round.(values(mc), digits=2) == collect(values(m12))
 
 # ====================
@@ -61,8 +71,8 @@ E3 = Ball2([2.5, 2.5], 0.25)
 E4 = Ball2([2.7, 2.5], 0.2)
 
 estimates = [E1, E2, E3, E4]
-masses = fill(1 / 4, 4)
-me = Dict(zip(estimates, masses))
+masses = fill(1 / 4.0, 4)
+me = dss(zip(estimates, masses))
 
 @test bel(B, me) == 0.25
 @test pls(B, me) == 0.5
