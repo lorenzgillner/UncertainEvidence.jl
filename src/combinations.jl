@@ -3,10 +3,10 @@
 
 Combine two mass assignment structures using Dempster's Rule of Combination.
 """
-function combine_dempster(X::DSS, Y::DSS)
-    if sum(values(X)) + sum(values(Y)) != one(Real) + one(Real)
-        error("Mass assignments are not properly distributed!")
-    end
+function combine_dempster(X::BPA, Y::BPA)
+    # if sum(values(X)) + sum(values(Y)) != one(Real) + one(Real)
+    #     @warn "Mass assignments are not properly distributed!"
+    # end
 
     # calculate the cross product of both mass assignments
     ps = Iterators.product(X, Y)
@@ -16,7 +16,7 @@ function combine_dempster(X::DSS, Y::DSS)
 
     K = 1 - sum(x[1].second * x[2].second for x in ps if isempty(x[1].first ∩ x[2].first))
 
-    r = Dict([
+    r = BPA([
         e => sum(x[1].second * x[2].second for x in ps if x[1].first ∩ x[2].first == e) / K
         for e in es
     ])

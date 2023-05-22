@@ -4,7 +4,7 @@ include("dst.jl")
 include("combinations.jl")
 
 export
-    DSS, dss,
+    BPA, bpa,
     redistribute!,
     bel, pls
 

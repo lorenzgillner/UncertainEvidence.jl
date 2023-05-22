@@ -1,20 +1,20 @@
 """
-    DSS = Dict{T,S} where {T<:Any, S<:Real}
+    BPA = Dict{T,S} where {T<:Any, S<:Real}
 
-A Dempster-Shafer structure (DSS) is the basic data container for
+A Dempster-Shafer structure (BPA) is the basic data container for
 calculations in the context of the Dempster-Shafer theory (DST).
 
-Use function `dss` to create automatically weighted DSS's.
+Use function `bpa` to create automatically weighted BPA's.
 
-See also: [`dss`](@ref), [`redistribute!`](@ref).
+See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
-const DSS{T,S} = Dict{T,S} where {T<:Any,S<:Real}
+const BPA{T,S} = Dict{T,S} where {T<:Any,S<:Real}
 
-DSS() = DSS{Any,Real}()
-DSS(ps::Pair{T,S}...) where {T,S} = DSS{T,S}(ps)
-function DSS(it)#::Iterators.Zip)
-    temp = DSS()
-    sizehint!(temp, sizeof(DSS) * length(it))
+BPA() = BPA{Any,Real}()
+BPA(ps::Pair{T,S}...) where {T,S} = BPA{T,S}(ps)
+function BPA(it)#::Iterators.Zip)
+    temp = BPA()
+    sizehint!(temp, sizeof(BPA) * length(it))
     for (k, v) in it
         temp[k] = v
     end
@@ -22,37 +22,37 @@ function DSS(it)#::Iterators.Zip)
 end
 
 """
-    dss(x...)
+    bpa(x...)
 
-Create a normalized Dempster-Shafer structure (DSS) from pairs of
-mass assignments `x`.
+Create a normalized basic probability assignment (BPA) structure
+from pairs of mass assignments `x`.
 
 # Examples
 ```juliadoctest
-julia> A = dss(Set("a") => 0.1, Set("b") => 0.2)
+julia> A = bpa(Set("a") => 0.1, Set("b") => 0.2)
 Dict{Set{Char}, Float64} with 3 entries:
   Set(['a'])      => 0.1
   Set(['b'])      => 0.2
   Set(['a', 'b']) => 0.7
 ```
 
-See also: [`DSS`](@ref).
+See also: [`BPA`](@ref).
 """
-function dss(X...)
+function bpa(X...)
     if Any in eltype(X).types
         @warn "Focal elements of type `Any` detected! Set operations may fail."
     end
-    redistribute!(DSS(X...))
+    redistribute!(BPA(X...))
 end
 
 """
     redistribute!(X)
 
-Normalize a DSS so that the sum of all mass assignments is equal to 1.
+Normalize a BPA so that the sum of all mass assignments is equal to 1.
 
-See also: [`DSS`](@ref), [`dss`](@ref).
+See also: [`BPA`](@ref), [`bpa`](@ref).
 """
-function redistribute!(X::DSS)
+function redistribute!(X::BPA)
     Ω = reduce(∪, keys(X))
 
     if Ω ∉ keys(X)
@@ -82,11 +82,11 @@ end
 """
     bel(e, X)
 
-Calculate the belief value for a focal element `e` in a DSS `X`.
+Calculate the belief value for a focal element `e` in a BPA `X`.
 
-See also: [`DSS`](@ref).
+See also: [`BPA`](@ref).
 """
-function bel(e, X::DSS)
+function bel(e, X::BPA)
     z = zero(Real)
 
     for x in X
@@ -101,11 +101,11 @@ end
 """
     pls(e, X)
 
-Calculate plausibility value for a focal element `e` in a DSS `X`.
+Calculate plausibility value for a focal element `e` in a BPA `X`.
 
-See also: [`DSS`](@ref).
+See also: [`BPA`](@ref).
 """
-function pls(e, X::DSS)
+function pls(e, X::BPA)
     z = zero(Real)
 
     for x in X

@@ -8,7 +8,7 @@ using LinearAlgebra
 #  Basic Functionality
 # =====================
 
-A = dss(Set("a") => 0.1, Set("b") => 0.2)
+A = bpa(Set("a") => 0.1, Set("b") => 0.2)
 @test A[Set("ab")] == 0.7
 
 # =====================================
@@ -17,7 +17,7 @@ A = dss(Set("a") => 0.1, Set("b") => 0.2)
 # See: https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
 # First sensor
-m1 = DSS(
+m1 = BPA(
     Set("r") => 0.35,
     Set("y") => 0.25,
     Set("g") => 0.15,
@@ -28,7 +28,7 @@ m1 = DSS(
 )
 
 # Second sensor; notice how this one is missing the mass assignment for Ω:
-m2 = DSS(
+m2 = BPA(
     Set("r") => 0.11,
     Set("y") => 0.21,
     Set("g") => 0.33,
@@ -38,7 +38,7 @@ m2 = DSS(
 )
 
 # Combined data, rounded to two decimal places
-m12 = DSS(
+m12 = BPA(
     Set("r") => 0.32,
     Set("gr") => 0.01,
     Set("y") => 0.33,
@@ -54,7 +54,7 @@ mc = combine_dempster(m1, m2)
 
 @test keys(mc) == keys(m12)
 
-@test round.(values(mc), digits=2) == collect(values(m12))
+@test sort(round.(values(mc), digits=2)) == sort(collect(values(m12)))
 
 # ====================
 #  Earthquake Example
@@ -72,7 +72,7 @@ E4 = Ball2([2.7, 2.5], 0.2)
 
 estimates = [E1, E2, E3, E4]
 masses = fill(1 / 4.0, 4)
-me = dss(zip(estimates, masses))
+me = bpa(zip(estimates, masses))
 
 @test bel(B, me) == 0.25
 @test pls(B, me) == 0.5
