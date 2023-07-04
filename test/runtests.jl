@@ -5,14 +5,14 @@ using LazySets
 using LinearAlgebra
 
 # =====================
-#  Basic Functionality
+#  Basic functionality
 # =====================
 
 A = bpa(Set("a") => 0.1, Set("b") => 0.2)
 @test A[Set("ab")] == 0.7
 
 # =====================================
-#  Three Colors Example from Wikipedia
+#  Three colors example from Wikipedia
 # =====================================
 # See: https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
@@ -57,7 +57,7 @@ mc = combine_dempster(m1, m2)
 @test sort(round.(values(mc), digits=2)) == sort(collect(values(m12)))
 
 # ====================
-#  Earthquake Example
+#  Earthquake example
 # ====================
 # Inspired by Wang & Klir: "Fuzzy Measure Theory"
 

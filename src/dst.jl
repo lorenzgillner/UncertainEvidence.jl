@@ -1,18 +1,24 @@
 """
     BPA = Dict{T,S} where {T<:Any, S<:Real}
 
-A Dempster-Shafer structure (BPA) is the basic data container for
-calculations in the context of the Dempster-Shafer theory (DST).
+A basic probability assessment (BPA) is the foundational data structure
+for calculations in the context of the Dempster-Shafer theory (DST).
 
-Use function `bpa` to create automatically weighted BPA's.
+Use `bpa` to create automatically normalized BPAs.
+Otherwise, use `redistribute!` for normalization.
 
 See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
 const BPA{T,S} = Dict{T,S} where {T<:Any,S<:Real}
 
+# general case
 BPA() = BPA{Any,Real}()
+
+# BPAs are basically `Dict`s, because pairs are more intuitive
 BPA(ps::Pair{T,S}...) where {T,S} = BPA{T,S}(ps)
-function BPA(it)#::Iterators.Zip)
+
+# create BPAs from an iterable object
+function BPA(it)
     temp = BPA()
     sizehint!(temp, sizeof(BPA) * length(it))
     for (k, v) in it
@@ -22,27 +28,27 @@ function BPA(it)#::Iterators.Zip)
 end
 
 """
-    bpa(x...)
+    bpa(X...)
 
 Create a normalized basic probability assignment (BPA) structure
-from pairs of mass assignments `x`.
+from pairs of mass assignments `X`.
 
 # Examples
 ```juliadoctest
 julia> A = bpa(Set("a") => 0.1, Set("b") => 0.2)
 Dict{Set{Char}, Float64} with 3 entries:
-  Set(['a'])      => 0.1
-  Set(['b'])      => 0.2
-  Set(['a', 'b']) => 0.7
+    Set(['a'])      => 0.1
+    Set(['b'])      => 0.2
+    Set(['a', 'b']) => 0.7
 ```
 
 See also: [`BPA`](@ref).
 """
 function bpa(X...)
     if Any in eltype(X).types
-        @warn "Focal elements of type `Any` detected! Set operations may fail."
+        @warn "Focal elements of type `Any` detected! Set operations might fail."
     end
-    redistribute!(BPA(X...))
+    return redistribute!(BPA(X...))
 end
 
 """
