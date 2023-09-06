@@ -60,11 +60,11 @@ See also: [`BPA`](@ref), [`bpa`](@ref).
 """
 function redistribute!(X::BPA)
     Ω = reduce(∪, keys(X))
-
+    
     if Ω ∉ keys(X)
-        X[Ω] = zero(Real)
+        X[Ω] = zero(last(eltype(X).types))
     end
-
+    
     vs = sum(values(X))
 
     if vs < one(Real)
