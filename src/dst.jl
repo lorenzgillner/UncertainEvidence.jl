@@ -45,9 +45,6 @@ Dict{Set{Char}, Float64} with 3 entries:
 See also: [`BPA`](@ref).
 """
 function bpa(X...)
-    if Any in eltype(X).types
-        @warn "Focal elements of type `Any` detected! Set operations might fail."
-    end
     return redistribute!(BPA(X...))
 end
 

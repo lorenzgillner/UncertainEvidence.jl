@@ -1,7 +1,9 @@
 """
     combine_dempster(X, Y)
 
-Combine two mass assignment structures using Dempster's Rule of Combination.
+Combine two BPAs using Dempster's Rule of Combination.
+
+See also: [`bpa`](@ref)
 """
 function combine_dempster(X::BPA, Y::BPA)
     # if sum(values(X)) + sum(values(Y)) != one(Real) + one(Real)
@@ -12,12 +14,13 @@ function combine_dempster(X::BPA, Y::BPA)
     ps = Iterators.product(X, Y)
 
     # get all focal elements
-    es = Set(keys(X)) ∪ Set(keys(Y))
+    es = (keys(X) ∪ keys(Y))
 
-    K = 1 - sum(x[1].second * x[2].second for x in ps if isempty(x[1].first ∩ x[2].first))
+    # subtract once so we don't have to do it for every iteration below
+    one_minus_K = 1 - sum(p[1].second * p[2].second for p in ps if isempty(p[1].first ∩ p[2].first))
 
-    r = BPA([
-        e => sum(x[1].second * x[2].second for x in ps if x[1].first ∩ x[2].first == e) / K
+    r = BPA{first(eltype(X).types), last(eltype(X).types)}([
+        e => sum(p[1].second * p[2].second for p in ps if (p[1].first ∩ p[2].first) == (e ∩ e); init = 0) / one_minus_K
         for e in es
     ])
     
