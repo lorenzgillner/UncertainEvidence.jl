@@ -14,31 +14,31 @@ using LinearAlgebra
         @test A[Set("ab")] == 0.7
     end
 
-    @testset verbose = true "applications" begin
+    @testset verbose = true "focal element types" begin
         @testset "characters" begin
             # test combination rules, based on Zadeh's paradox, see:
             # https://doi.org/10.1609/aimag.v5i3.452
-    
+
             X1 = BPA(
                 'A' => 0.99,
                 'B' => 0.01,
                 'C' => 0.00
             )
-    
+
             X2 = BPA(
                 'A' => 0.00,
                 'B' => 0.01,
                 'C' => 0.99
             )
-    
+
             X12 = combine_dempster(X1, X2)
-    
+
             @test X12['A'] == 0.0
-            @test X12['B']  ≈ 1.0
+            @test X12['B'] ≈ 1.0
             @test X12['C'] == 0.0
         end
 
-        @testset "strings" begin
+        @testset "sets of characters" begin
             # three colors example from Wikipedia, see:
             # https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
@@ -66,12 +66,12 @@ using LinearAlgebra
             # combined data, rounded to two decimal places
             m12 = BPA(
                 Set("r") => 0.32,
-                Set("gr") => 0.01,
                 Set("y") => 0.33,
-                Set("gy") => 0.01,
-                Set("gyr") => 0.02,
                 Set("g") => 0.24,
                 Set("yr") => 0.07,
+                Set("gr") => 0.01,
+                Set("gy") => 0.01,
+                Set("gyr") => 0.02,
             )
 
             @test sum(values(redistribute!(m2))) == one(Real)
@@ -83,7 +83,29 @@ using LinearAlgebra
             @test sort(round.(values(mc), digits=2)) == sort(collect(values(m12)))
         end
 
-        @testset "R²" begin
+        @testset "sets of strings" begin
+            # Zadeh's paradox again, but this time with more descriptive focal elements
+
+            X1 = BPA(
+                ["concussion"] => 0.99,
+                ["tumor"] => 0.01,
+                ["migraine"] => 0.00
+            )
+
+            X2 = BPA(
+                ["concussion"] => 0.00,
+                ["tumor"] => 0.01,
+                ["migraine"] => 0.99
+            )
+
+            X12 = combine_dempster(X1, X2)
+
+            @test X12[["concussion"]] == 0.0
+            @test X12[["tumor"]] ≈ 1.0
+            @test X12[["migraine"]] == 0.0
+        end
+
+        @testset "balls (ℝ²)" begin
             # earthquake example, inspired by:
             # Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
 

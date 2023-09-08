@@ -20,7 +20,6 @@ BPA(ps::Pair{T,S}...) where {T,S} = BPA{T,S}(ps)
 # create BPAs from an iterable object
 function BPA(it)
     temp = BPA()
-    sizehint!(temp, sizeof(BPA) * length(it))
     for (k, v) in it
         temp[k] = v
     end
@@ -57,11 +56,11 @@ See also: [`BPA`](@ref), [`bpa`](@ref).
 """
 function redistribute!(X::BPA)
     Ω = reduce(∪, keys(X))
-    
+
     if Ω ∉ keys(X)
         X[Ω] = zero(last(eltype(X).types))
     end
-    
+
     vs = sum(values(X))
 
     if vs < one(Real)
