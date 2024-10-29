@@ -36,7 +36,7 @@ The basic probability assessment (`BPA`) is the fundamental data structure for c
 X12 = combine_dempster(X1, X2)
 ```
 
-Based on this combined structure, the lower (*belief*) and upper bound (*plausibility*) of the likelihood of a cause can be queried:
+Based on this combined structure, the lower (*belief*) and upper (*plausibility*) bound of the likelihood of a cause can be queried:
 
 ```julia
 # lower bound
@@ -46,7 +46,7 @@ bel('A', X12)
 pls('A', X12)
 ```
 
-The masses of a `BPA` should always sum up to 1. To ensure this, use the  method `bpa` instead:
+The mass of a `BPA` should always sum up to 1. To ensure this, use the wrapper `bpa` instead:
 
 ```julia
 X = bpa(
@@ -63,3 +63,5 @@ X = bpa(
 ```
 
 Note the use of `Set`s in this example; if the sum of masses is lower than 1, the remaining mass is automatically assigned to $\Omega$, the set of all focal elements. This would fail, if all other focal elements would be of type `Char`.
+
+Take a look at the [unit tests](test/runtests.jl) for more usage examples.
