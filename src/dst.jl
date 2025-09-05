@@ -55,6 +55,8 @@ Normalize a BPA so that the sum of all mass assignments is equal to 1.
 See also: [`BPA`](@ref), [`bpa`](@ref).
 """
 function redistribute!(X::BPA)
+    real_one = one(Real)
+
     Ω = reduce(∪, keys(X))
 
     if Ω ∉ keys(X)
@@ -63,14 +65,13 @@ function redistribute!(X::BPA)
 
     vs = sum(values(X))
 
-    if vs < one(Real)
+    if vs < real_one
         # If the sum of all focal elements, including Ω, is less
         # than 1, the remainder must be added to Ω.
-        X[Ω] += one(Real) - vs
-    elseif vs > one(Real) || one(Real) ∈ vs
+        X[Ω] += real_one - vs
+    elseif vs > real_one
         # Normalize masses if their sum is greater than one;
-        # in some cases (e.g. intervals) the containment of 1
-        # is the sufficient criterion for normalization.
+        # in the case of intervals, strict relations apply
         for (k, v) in X
             X[k] = v / vs
         end
