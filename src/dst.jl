@@ -17,11 +17,12 @@ end
 
 # General construction
 BPA() = BPA{Any,Number}(Dict{Any,Number}())
+BPA(d::Dict{K,V}) where {K,V} = BPA{K,V}(d)
+BPA(ps::Pair...) = BPA(ps)
 BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
 BPA{K,V}(ps::Pair{K,V}...) where {K,V} = BPA{K,V}(Dict{K,V}(ps))
-BPA(ps::Pair...) = BPA(ps)
 BPA(itr) = BPA(Dict(itr))
-BPA(d::Dict{K,V}) where {K,V} = BPA{K,V}(d)
+BPA{K,V}(itr) where {K,V} = BPA(Dict{K,V}(itr))
 
 # AbstractDict interface
 Base.length(X::BPA) = length(X.self)
@@ -36,15 +37,6 @@ Base.pairs(X::BPA) = pairs(X.self)
 Base.getindex(X::BPA{K,V}, k::K) where {K,V} = getindex(X.self, k)
 Base.setindex!(X::BPA{K,V}, v::V, k::K) where {K,V} = (X.self[k] = v)
 
-# Custom show method for BPA
-function Base.show(io::IO, X::BPA)
-    T = typeof(X)
-    print(io, "BPA", T.parameters, " with ", length(X), " entries:")
-    for (k, v) in X
-        print(io, "\n  ", k, " => ", v)
-    end
-end
-
 """
     bpa(X...)
 
@@ -54,7 +46,7 @@ from pairs of mass assignments `X`.
 # Examples
 ```juliadoctest
 julia> A = bpa(Set("a") => 0.1, Set("b") => 0.2)
-Dict{Set{Char}, Float64} with 3 entries:
+BPA{Set{Char}, Float64} with 3 entries:
     Set(['a'])      => 0.1
     Set(['b'])      => 0.2
     Set(['a', 'b']) => 0.7
