@@ -1,5 +1,5 @@
 """
-    BPA = Dict{T,S} where {T<:Any, S<:Real}
+    BPA{K,V} where {K<:Any, V<:Number}
 
 A basic probability assessment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
@@ -9,21 +9,40 @@ Otherwise, use `redistribute!` for normalization.
 
 See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
-const BPA{T,S} = Dict{T,S} where {T<:Any,S<:Real}
 
-# general case
-BPA() = BPA{Any,Real}()
+# BPA is a subtype of AbstractDict
+struct BPA{K<:Any,V<:Number} <: AbstractDict{K,V}
+    self::Dict{K,V}
+end
 
-# BPAs are basically `Dict`s, because pairs are more intuitive
-BPA(ps::Pair{T,S}...) where {T,S} = BPA{T,S}(ps)
+# General construction
+BPA() = BPA{Any,Number}(Dict{Any,Number}())
+BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
+BPA{K,V}(ps::Pair{K,V}...) where {K,V} = BPA{K,V}(Dict{K,V}(ps))
+BPA(ps::Pair...) = BPA(ps)
+BPA(itr) = BPA(Dict(itr))
+BPA(d::Dict{K,V}) where {K,V} = BPA{K,V}(d)
 
-# create BPAs from an iterable object
-function BPA(it)
-    temp = BPA()
-    for (k, v) in it
-        temp[k] = v
+# AbstractDict interface
+Base.length(X::BPA) = length(X.self)
+
+Base.iterate(X::BPA) = iterate(X.self)
+Base.iterate(X::BPA, i) = iterate(X.self, i)
+
+Base.keys(X::BPA) = keys(X.self)
+Base.values(X::BPA) = values(X.self)
+Base.pairs(X::BPA) = pairs(X.self)
+
+Base.getindex(X::BPA{K,V}, k::K) where {K,V} = getindex(X.self, k)
+Base.setindex!(X::BPA{K,V}, v::V, k::K) where {K,V} = (X.self[k] = v)
+
+# Custom show method for BPA
+function Base.show(io::IO, X::BPA)
+    T = typeof(X)
+    print(io, "BPA", T.parameters, " with ", length(X), " entries:")
+    for (k, v) in X
+        print(io, "\n  ", k, " => ", v)
     end
-    return temp
 end
 
 """
@@ -54,13 +73,13 @@ Normalize a BPA so that the sum of all mass assignments is equal to 1.
 
 See also: [`BPA`](@ref), [`bpa`](@ref).
 """
-function redistribute!(X::BPA)
+function redistribute!(X::BPA{K,V}) where {K,V}
     real_one = one(Real)
 
     Ω = reduce(∪, keys(X))
 
     if Ω ∉ keys(X)
-        X[Ω] = zero(last(eltype(X).types))
+        X[Ω] = zero(V)
     end
 
     vs = sum(values(X))
@@ -87,7 +106,7 @@ end
 
 Calculate the belief value for a focal element `e` in a BPA `X`.
 
-See also: [`BPA`](@ref).
+See also: [`BPA`](@ref), [`pls`](@ref).
 """
 function bel(e, X::BPA)
     z = zero(Real)
@@ -106,7 +125,7 @@ end
 
 Calculate plausibility value for a focal element `e` in a BPA `X`.
 
-See also: [`BPA`](@ref).
+See also: [`BPA`](@ref), [`bel`](@ref).
 """
 function pls(e, X::BPA)
     z = zero(Real)

@@ -23,10 +23,12 @@ function combine_dempster(X::BPA, Y::BPA)
     p_type = promote_type(first(eltype(X).types), first(eltype(Y).types))
     e_type = promote_type(last(eltype(X).types), last(eltype(Y).types))
 
-    r = BPA{p_type, e_type}([
-        e => sum(p[1].second * p[2].second for p in ps if (p[1].first ∩ p[2].first) == (e ∩ e); init = 0) / one_minus_K
-        for e in es
-    ])
-    
+    r = BPA{p_type,e_type}(
+        (
+            e => sum(p[1].second * p[2].second for p in ps if (p[1].first ∩ p[2].first) == (e ∩ e); init=0) / one_minus_K
+            for e in es
+        )...
+    )
+
     return r
 end

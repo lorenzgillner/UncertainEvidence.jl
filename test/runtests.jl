@@ -5,17 +5,34 @@ using LazySets
 using LinearAlgebra
 
 @testset verbose = true "UncertainEvidence" begin
-	@testset "basics" begin
-		# test correct redistribution of masees when using `bpa`
-		A = bpa(
-			Set("a") => 0.1,
-			Set("b") => 0.2,
+	@testset "BPA creation" begin
+		# Test the general constructor
+		A = BPA(:a => 0.2, :b => 0.8)
+
+		@test A[:a] == 0.2
+		@test A[:b] == 0.8
+		@test length(A) == 2
+
+		# Test correct redistribution of masses when using `bpa`
+		B = bpa(
+			Set('a') => 0.1,
+			Set('b') => 0.2,
 		)
-		@test A[Set("ab")] == 0.7
+		@test B[Set("ab")] == 0.7
 	end
 
-	@testset verbose = true "focal element types" begin
-		@testset "characters" begin
+	@testset "Combination rules" begin
+		@testset "Dempster's rule" begin
+			@test 1 < 2
+		end
+
+		@testset "Yager's rule" begin
+			@test 1 < 2
+		end
+	end
+
+	@testset "Focal element types" begin
+		@testset "Characters" begin
 			# test combination rules, based on Zadeh's paradox, see:
 			# https://doi.org/10.1609/aimag.v5i3.452
 
@@ -38,7 +55,7 @@ using LinearAlgebra
 			@test X12['C'] == 0.0
 		end
 
-		@testset "sets of characters" begin
+		@testset "Sets of characters" begin
 			# three colors example from Wikipedia, see:
 			# https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
 
@@ -83,7 +100,7 @@ using LinearAlgebra
 			@test sort(round.(values(mc), digits = 2)) == sort(collect(values(m12)))
 		end
 
-		@testset "sets of strings" begin
+		@testset "Sets of strings" begin
 			# Zadeh's paradox again, but this time with more descriptive focal elements
 
 			X1 = BPA(
@@ -105,7 +122,7 @@ using LinearAlgebra
 			@test X12[["migraine"]] == 0.0
 		end
 
-		@testset "balls (ℝ²)" begin
+		@testset "Balls (ℝ²)" begin
 			# earthquake example, inspired by:
 			# Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
 
@@ -120,7 +137,7 @@ using LinearAlgebra
 
 			estimates = [E1, E2, E3, E4]
 			masses = fill(1.0 / 4, 4)
-			me = bpa(zip(estimates, masses))
+			me = BPA(zip(estimates, masses))
 
 			@test bel(B, me) == 0.25
 			@test pls(B, me) == 0.5
