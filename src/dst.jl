@@ -1,3 +1,5 @@
+const BaseType = Number;
+
 """
     BPA{K,V} where {K<:Any, V<:Number}
 
@@ -11,12 +13,12 @@ See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
 
 # BPA is a subtype of AbstractDict
-struct BPA{K<:Any,V<:Number} <: AbstractDict{K,V}
+struct BPA{K<:Any,V<:BaseType} <: AbstractDict{K,V}
     self::Dict{K,V}
 end
 
 # General construction
-BPA() = BPA{Any,Number}(Dict{Any,Number}())
+BPA() = BPA{Any,BaseType}(Dict{Any,BaseType}())
 BPA(d::Dict{K,V}) where {K,V} = BPA{K,V}(d)
 BPA(ps::Pair...) = BPA(ps)
 BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
@@ -66,7 +68,7 @@ Normalize a BPA so that the sum of all mass assignments is equal to 1.
 See also: [`BPA`](@ref), [`bpa`](@ref).
 """
 function redistribute!(X::BPA{K,V}) where {K,V}
-    real_one = one(Real)
+    real_one = one(BaseType)
 
     Ω = reduce(∪, keys(X))
 
@@ -101,15 +103,15 @@ Calculate the belief value for a focal element `e` in a BPA `X`.
 See also: [`BPA`](@ref), [`pls`](@ref).
 """
 function bel(e, X::BPA)
-    z = zero(Real)
+    rv = zero(BaseType)
 
     for x in X
         if issubset(x.first, e)
-            z += x.second
+            rv += x.second
         end
     end
 
-    return z
+    return rv
 end
 
 """
@@ -120,13 +122,13 @@ Calculate plausibility value for a focal element `e` in a BPA `X`.
 See also: [`BPA`](@ref), [`bel`](@ref).
 """
 function pls(e, X::BPA)
-    z = zero(Real)
+    rv = zero(BaseType)
 
     for x in X
         if !isdisjoint(x.first, e)
-            z += x.second
+            rv += x.second
         end
     end
 
-    return z
+    return rv
 end
