@@ -3,7 +3,7 @@
 
 Combine two BPAs using Dempster's Rule of Combination.
 
-See also: [`bpa`](@ref)
+See also: [`combine_yager`](@ref), [`bpa`](@ref).
 """
 function combine_dempster(X::BPA, Y::BPA)
     # if sum(values(X)) + sum(values(Y)) != one(Real) + one(Real)
@@ -30,5 +30,34 @@ function combine_dempster(X::BPA, Y::BPA)
         )...
     )
 
+    return r
+end
+
+"""
+    combine_yager(X::BPA, Y::BPA)
+
+Combine two BPAs using Yager's Rule of Combination.
+
+See also: [`combine_dempster`](@ref), [`bpa`](@ref).
+"""
+function combine_yager(X::BPA, Y::BPA)
+    # calculate the cross product of both mass assignments
+    ps = collect(Iterators.product(collect(X), collect(Y)))
+
+    # get all focal elements
+    es = (keys(X) ∪ keys(Y))
+    
+    # compute K, the mass of conflict
+    K = sum(p[1].second * p[2].second for p in ps if isempty(p[1].first ∩ p[2].first))
+    
+    r = BPA([
+        e => sum(p[1].second * p[2].second for p in ps if (p[1].first ∩ p[2].first) == (e ∩ e); init = 0)
+        for e in es
+    ])
+
+    all_keys = reduce(union, keys(r))
+    
+    r[all_keys] = r[all_keys] + K
+    
     return r
 end

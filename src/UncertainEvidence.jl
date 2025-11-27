@@ -17,7 +17,7 @@ export
     bel, pls
 include("dst.jl")
 
-export combine_dempster
+export combine_dempster, combine_yager
 include("combinations.jl")
 
 end
