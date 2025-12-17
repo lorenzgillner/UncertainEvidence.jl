@@ -40,7 +40,7 @@ Combine two BPAs using Yager's Rule of Combination.
 
 See also: [`combine_dempster`](@ref), [`bpa`](@ref).
 """
-function combine_yager(X::BPA, Y::BPA)
+function combine_yager(X::BPA, Y::BPA; conflict=true)
     # calculate the cross product of both mass assignments
     ps = collect(Iterators.product(collect(X), collect(Y)))
 
@@ -57,7 +57,9 @@ function combine_yager(X::BPA, Y::BPA)
 
     all_keys = reduce(union, keys(r))
     
-    r[all_keys] = r[all_keys] + K
+    if conflict
+        r[all_keys] = r[all_keys] + K
+    end
     
     return r
 end

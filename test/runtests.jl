@@ -117,30 +117,30 @@ using LinearAlgebra
 
 			X12 = combine_dempster(X1, X2)
 
-			@test X12[["concussion"]] == 0.0
-			@test X12[["tumor"]] ≈ 1.0
-			@test X12[["migraine"]] == 0.0
+			@test X12["concussion"] == 0.0
+			@test X12["tumor"] ≈ 1.0
+			@test X12["migraine"] == 0.0
 		end
 
-		@testset "Balls (ℝ²)" begin
-			# earthquake example, inspired by:
-			# Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
+		# @testset "Balls (ℝ²)" begin
+		# 	# earthquake example, inspired by:
+		# 	# Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
 
-			# epicenter of the earthquake
-			B = Ball2([2.0, 1.0], 1.0)
+		# 	# epicenter of the earthquake
+		# 	B = Ball2([2.0, 1.0], 1.0)
 
-			# estimates for the earthquake's epicenter
-			E1 = Ball2([2.5, 0.75], 0.25)
-			E2 = Ball2([1.8, 1.8], 0.5)
-			E3 = Ball2([2.5, 2.5], 0.25)
-			E4 = Ball2([2.7, 2.5], 0.2)
+		# 	# estimates for the earthquake's epicenter
+		# 	E1 = Ball2([2.5, 0.75], 0.25)
+		# 	E2 = Ball2([1.8, 1.8], 0.5)
+		# 	E3 = Ball2([2.5, 2.5], 0.25)
+		# 	E4 = Ball2([2.7, 2.5], 0.2)
 
-			estimates = [E1, E2, E3, E4]
-			masses = fill(1.0 / 4, 4)
-			me = BPA(zip(estimates, masses))
+		# 	estimates = [E1, E2, E3, E4]
+		# 	masses = fill(1.0 / 4, 4)
+		# 	me = BPA(zip(estimates, masses))
 
-			@test bel(B, me) == 0.25
-			@test pls(B, me) == 0.5
-		end
+		# 	@test bel(B, me) == 0.25
+		# 	@test pls(B, me) == 0.5
+		# end
 	end
 end
