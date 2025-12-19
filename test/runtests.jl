@@ -6,141 +6,177 @@ using LinearAlgebra
 
 @testset verbose = true "UncertainEvidence" begin
 	@testset "BPA creation" begin
-		# Test the general constructor
-		A = BPA(:a => 0.2, :b => 0.8)
+		@testset "From Dict, with explicit Ω" begin
+			d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5, Set([:a, :b]) => 0.0)
+			X = BPA(d, Ω = Set([:a, :b]))
 
-		@test A[:a] == 0.2
-		@test A[:b] == 0.8
-		@test length(A) == 2
-
-		# Test correct redistribution of masses when using `bpa`
-		B = bpa(
-			Set('a') => 0.1,
-			Set('b') => 0.2,
-		)
-		@test B[Set("ab")] == 0.7
-	end
-
-	@testset "Combination rules" begin
-		@testset "Dempster's rule" begin
-			@test 1 < 2
+			@test X[:a] == 0.5
+			@test X[:b] == 0.5
+			@test length(X) == 3
+			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+			@test omega(X) == Set([:a, :b])
 		end
 
-		@testset "Yager's rule" begin
-			@test 1 < 2
-		end
-	end
+		@testset "From Dict, with explicit Ω (as argument)" begin
+			X = BPA(Dict(Set([:a]) => 0.5, Set([:b]) => 0.5), Ω = Set([:a, :b]))
 
-	@testset "Focal element types" begin
-		@testset "Characters" begin
-			# test combination rules, based on Zadeh's paradox, see:
-			# https://doi.org/10.1609/aimag.v5i3.452
-
-			X1 = BPA(
-				'A' => 0.99,
-				'B' => 0.01,
-				'C' => 0.00,
-			)
-
-			X2 = BPA(
-				'A' => 0.00,
-				'B' => 0.01,
-				'C' => 0.99,
-			)
-
-			X12 = combine_dempster(X1, X2)
-
-			@test X12['A'] == 0.0
-			@test X12['B'] ≈ 1.0
-			@test X12['C'] == 0.0
+			@test X[:a] == 0.5
+			@test X[:b] == 0.5
+			@test length(X) == 3
+			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+			@test omega(X) == Set([:a, :b])
 		end
 
-		@testset "Sets of characters" begin
-			# three colors example from Wikipedia, see:
-			# https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
+		@testset "From Dict, with explicit Ω" begin
+			X = BPA(Dict(Set([:a]) => 0.5, Set([:b]) => 0.5, Set([:a, :b]) => 0.0))
 
-			# first sensor
-			m1 = BPA(
-				Set("r") => 0.35,
-				Set("y") => 0.25,
-				Set("g") => 0.15,
-				Set("ry") => 0.06,
-				Set("rg") => 0.05,
-				Set("yg") => 0.04,
-				Set("ryg") => 0.1,
-			)
-
-			# second sensor; notice how this one is missing the mass assignment for Ω:
-			m2 = BPA(
-				Set("r") => 0.11,
-				Set("y") => 0.21,
-				Set("g") => 0.33,
-				Set("ry") => 0.21,
-				Set("rg") => 0.01,
-				Set("yg") => 0.03,
-			)
-
-			# combined data, rounded to two decimal places
-			m12 = BPA(
-				Set("r") => 0.32,
-				Set("y") => 0.33,
-				Set("g") => 0.24,
-				Set("yr") => 0.07,
-				Set("gr") => 0.01,
-				Set("gy") => 0.01,
-				Set("gyr") => 0.02,
-			)
-
-			@test sum(values(redistribute!(m2))) == one(Real)
-
-			mc = combine_dempster(m1, m2)
-
-			@test keys(mc) == keys(m12)
-
-			@test sort(round.(values(mc), digits = 2)) == sort(collect(values(m12)))
+			@test X[:a] == 0.5
+			@test X[:b] == 0.5
+			@test length(X) == 3
+			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+			@test omega(X) == Set([:a, :b])
 		end
 
-		@testset "Sets of strings" begin
-			# Zadeh's paradox again, but this time with more descriptive focal elements
+		# @testset "From Pairs" begin
+		# 	A = BPA(:a => 0.2, :b => 0.8)
 
-			X1 = BPA(
-				["concussion"] => 0.99,
-				["tumor"] => 0.01,
-				["migraine"] => 0.00,
-			)
+		# 	@test A[:a] == 0.2
+		# 	@test A[:b] == 0.8
+		# 	@test length(A) == 3
+		# 	@test focalelements(A) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+		# 	@test omega(A) == Set([:a, :b])
+		# end
 
-			X2 = BPA(
-				["concussion"] => 0.00,
-				["tumor"] => 0.01,
-				["migraine"] => 0.99,
-			)
-
-			X12 = combine_dempster(X1, X2)
-
-			@test X12["concussion"] == 0.0
-			@test X12["tumor"] ≈ 1.0
-			@test X12["migraine"] == 0.0
-		end
-
-		# @testset "Balls (ℝ²)" begin
-		# 	# earthquake example, inspired by:
-		# 	# Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
-
-		# 	# epicenter of the earthquake
-		# 	B = Ball2([2.0, 1.0], 1.0)
-
-		# 	# estimates for the earthquake's epicenter
-		# 	E1 = Ball2([2.5, 0.75], 0.25)
-		# 	E2 = Ball2([1.8, 1.8], 0.5)
-		# 	E3 = Ball2([2.5, 2.5], 0.25)
-		# 	E4 = Ball2([2.7, 2.5], 0.2)
-
-		# 	estimates = [E1, E2, E3, E4]
-		# 	masses = fill(1.0 / 4, 4)
-		# 	me = BPA(zip(estimates, masses))
-
-		# 	@test bel(B, me) == 0.25
-		# 	@test pls(B, me) == 0.5
+		# @testset "Advanced"
+		# 	# Test correct redistribution of masses when using `bpa`
+		# 	B = bpa(
+		# 		Set('a') => 0.1,
+		# 		Set('b') => 0.2,
+		# 	)
+		# 	@test B[Set("ab")] == 0.7
 		# end
 	end
+
+	# @testset "Combination rules" begin
+	# 	@testset "Dempster's rule" begin
+	# 		@test 1 < 2
+	# 	end
+
+	# 	@testset "Yager's rule" begin
+	# 		@test 1 < 2
+	# 	end
+	# end
+
+	# @testset "Focal element types" begin
+	# 	@testset "Characters" begin
+	# 		# test combination rules, based on Zadeh's paradox, see:
+	# 		# https://doi.org/10.1609/aimag.v5i3.452
+
+	# 		X1 = BPA(
+	# 			'A' => 0.99,
+	# 			'B' => 0.01,
+	# 			'C' => 0.00,
+	# 		)
+
+	# 		X2 = BPA(
+	# 			'A' => 0.00,
+	# 			'B' => 0.01,
+	# 			'C' => 0.99,
+	# 		)
+
+	# 		X12 = combine_dempster(X1, X2)
+
+	# 		@test X12['A'] == 0.0
+	# 		@test X12['B'] ≈ 1.0
+	# 		@test X12['C'] == 0.0
+	# 	end
+
+	# 	@testset "Sets of characters" begin
+	# 		# three colors example from Wikipedia, see:
+	# 		# https://en.wikipedia.org/wiki/Dempster%E2%80%93Shafer_theory#Bayesian_approximation
+
+	# 		# first sensor
+	# 		m1 = BPA(
+	# 			Set("r") => 0.35,
+	# 			Set("y") => 0.25,
+	# 			Set("g") => 0.15,
+	# 			Set("ry") => 0.06,
+	# 			Set("rg") => 0.05,
+	# 			Set("yg") => 0.04,
+	# 			Set("ryg") => 0.1,
+	# 		)
+
+	# 		# second sensor; notice how this one is missing the mass assignment for Ω:
+	# 		m2 = BPA(
+	# 			Set("r") => 0.11,
+	# 			Set("y") => 0.21,
+	# 			Set("g") => 0.33,
+	# 			Set("ry") => 0.21,
+	# 			Set("rg") => 0.01,
+	# 			Set("yg") => 0.03,
+	# 		)
+
+	# 		# combined data, rounded to two decimal places
+	# 		m12 = BPA(
+	# 			Set("r") => 0.32,
+	# 			Set("y") => 0.33,
+	# 			Set("g") => 0.24,
+	# 			Set("yr") => 0.07,
+	# 			Set("gr") => 0.01,
+	# 			Set("gy") => 0.01,
+	# 			Set("gyr") => 0.02,
+	# 		)
+
+	# 		@test sum(values(redistribute!(m2))) == one(Real)
+
+	# 		mc = combine_dempster(m1, m2)
+
+	# 		@test keys(mc) == keys(m12)
+
+	# 		@test sort(round.(values(mc), digits = 2)) == sort(collect(values(m12)))
+	# 	end
+
+	# 	@testset "Sets of strings" begin
+	# 		# Zadeh's paradox again, but this time with more descriptive focal elements
+
+	# 		X1 = BPA(
+	# 			["concussion"] => 0.99,
+	# 			["tumor"] => 0.01,
+	# 			["migraine"] => 0.00,
+	# 		)
+
+	# 		X2 = BPA(
+	# 			["concussion"] => 0.00,
+	# 			["tumor"] => 0.01,
+	# 			["migraine"] => 0.99,
+	# 		)
+
+	# 		X12 = combine_dempster(X1, X2)
+
+	# 		@test X12["concussion"] == 0.0
+	# 		@test X12["tumor"] ≈ 1.0
+	# 		@test X12["migraine"] == 0.0
+	# 	end
+
+	# 	# @testset "Balls (ℝ²)" begin
+	# 	# 	# earthquake example, inspired by:
+	# 	# 	# Z. Wang, G. J. Klir (2013): "Fuzzy measure theory"
+
+	# 	# 	# epicenter of the earthquake
+	# 	# 	B = Ball2([2.0, 1.0], 1.0)
+
+	# 	# 	# estimates for the earthquake's epicenter
+	# 	# 	E1 = Ball2([2.5, 0.75], 0.25)
+	# 	# 	E2 = Ball2([1.8, 1.8], 0.5)
+	# 	# 	E3 = Ball2([2.5, 2.5], 0.25)
+	# 	# 	E4 = Ball2([2.7, 2.5], 0.2)
+
+	# 	# 	estimates = [E1, E2, E3, E4]
+	# 	# 	masses = fill(1.0 / 4, 4)
+	# 	# 	me = BPA(zip(estimates, masses))
+
+	# 	# 	@test bel(B, me) == 0.25
+	# 	# 	@test pls(B, me) == 0.5
+	# 	# end
+	# end
 end

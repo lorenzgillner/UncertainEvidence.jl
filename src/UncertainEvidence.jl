@@ -1,5 +1,3 @@
-__precompile__(true)
-
 module UncertainEvidence
 
 import Base: @warn,
@@ -11,8 +9,11 @@ import Base: @warn,
     issubset, isdisjoint, isempty
     Iterators.product
 
+import Combinatorics: combinations
+
 export
     BPA, bpa,
+    focalelements, masses, omega,
     redistribute!,
     bel, pls
 include("dst.jl")

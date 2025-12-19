@@ -1,7 +1,9 @@
 const BaseType = Number;
 
-wrapset(x::T) where {T<:AbstractArray} = Set(x);
-wrapset(x) = x isa AbstractSet ? x : Set([x]);
+# Convenience functions
+wrapset(x::T) where {T<:AbstractArray} = Set(x)
+wrapset(x) = x isa AbstractSet ? x : Set([x])
+deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : typeof(k) for k in keys(d)])
 
 """
     BPA{K,V} where {K<:Any, V<:Number}
@@ -14,39 +16,87 @@ Otherwise, use `redistribute!` for normalization.
 
 See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
-
-# BPA is a subtype of AbstractDict
 struct BPA{K<:Any,V<:BaseType} <: AbstractDict{K,V}
     self::Dict{K,V}
     Ω::K
 
-    function BPA{K,V}(d::Dict{K,V}) where {K<:AbstractSet,V<:BaseType}
-        Ω = reduce(union, keys(d));
-        new{K,V}(d, Ω);
-    end
+    # Default constructor; ensure all subsets except ∅ are present
+    function BPA{K,V}(d::Dict{K,V}, Ω::K) where {K<:AbstractSet,V<:BaseType}
+        all_elements = wrapset.(collect(combinations(collect(Ω), length(Ω) - 1)))
 
-    function BPA{K,V}(d::Dict{K,V}) where {K<:Any,V<:BaseType}
-        T = reduce(promote_type, [k isa AbstractArray ? eltype(k) : typeof(k) for k in keys(d)]);
+        set_diff = setdiff(all_elements, keys(d))
 
-        dd = Dict{Set{T},V}();
+        for k in set_diff
+            if isdisjoint(k, Ω)
+                throw(ArgumentError("Focal element $k is not a subset of Ω=$Ω"))
+            end
 
-        for (k, v) in d
-            dd[wrapset(k)] = v;
+            d[k] = zero(V)
         end
 
-        Ω = reduce(union, keys(dd));
-        new{Set{T},V}(dd, Ω);
+        if !(Ω in keys(d))
+            d[Ω] = zero(BaseType)
+        end
+
+        # The mass of ∅ is implicitly zero
+        new{K,V}(d, Ω)
     end
 end
 
-# General construction
-BPA() = BPA{Any,BaseType}(Dict{Any,BaseType}())
-BPA(d::Dict{K,V}) where {K,V} = BPA{K,V}(d)
-BPA(ps::Pair...) = BPA(ps)
-BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
-BPA{K,V}(ps::Pair{K,V}...) where {K,V} = BPA{K,V}(Dict{K,V}(ps))
-BPA(itr) = BPA(Dict(itr))
-BPA{K,V}(itr) where {K,V} = BPA(Dict{K,V}(itr))
+# Constructor for BPA without Ω; infer Ω from keys
+function BPA(d::Dict{K,V}) where {K<:AbstractSet,V<:BaseType}
+    ks = keys(d)
+
+    Ω = reduce(union, ks)
+
+    BPA{K,V}(d, Ω)
+end
+
+# Constructor for non-set keys
+function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:BaseType}
+    S = Set{deducetype(d)}
+
+    if S != typeof(Ω)
+        throw(ArgumentError("Provided Ω type $(typeof(Ω)) does not match inferred key type $S"))
+    end
+
+    dd = Dict{S,V}()
+
+    for (k, v) in d
+        dd[wrapset(k)] = v
+    end
+
+    BPA{S,V}(dd, Ω)
+end
+
+BPA(d::Dict{K,V}, Ω::AbstractArray{K}) where {K<:Any,V<:BaseType} = BPA(d, wrapset(Ω))
+
+# Constructor for non-set keys without Ω; infer Ω from keys
+function BPA(d::Dict{K,V}) where {K<:Any,V<:BaseType}
+    S = Set{deducetype(d)}
+
+    dd = Dict{S,V}()
+
+    for (k, v) in d
+        dd[wrapset(k)] = v
+    end
+
+    BPA{S,V}(dd)
+end
+
+BPA() = throw(ArgumentError("Cannot create an empty BPA"))
+
+# Convenience constructors
+BPA(d::Dict; Ω=nothing) = isnothing(Ω) ? BPA(d) : BPA(d, Ω)
+BPA(ps::Pair...; Ω=nothing) = isnothing(Ω) ? BPA(Dict(ps)) : BPA(Dict(ps), Ω)
+
+# BPA(ps::Pair...) = BPA(Dict(ps))
+# BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
+# BPA{K,V}(ps::Pair{K,V}...) where {K,V} = BPA{K,V}(Dict{K,V}(ps))
+
+# BPA(itr) = BPA(Dict(itr))
+# BPA(itr, Ω) = BPA(Dict(itr), Ω)
+# BPA{K,V}(itr) where {K,V} = BPA(Dict{K,V}(itr))
 
 # AbstractDict interface
 Base.length(X::BPA) = length(X.self)
@@ -62,20 +112,26 @@ Base.getindex(X::BPA{Set{K},V}, k::K) where {K,V} = getindex(X.self, wrapset(k))
 Base.getindex(X::BPA{Set{K},V}, k::Set{K}) where {K,V} = getindex(X.self, k)
 Base.setindex!(X::BPA{K,V}, v::V, k::K) where {K,V} = (X.self[k] = v)
 
+Base.eltype(X::BPA) = eltype(X.self)
+
 # BPA-specific accessor aliases
 focalelements(X::BPA) = keys(X.self)
 masses(X::BPA) = values(X.self)
+omega(X::BPA) = X.Ω
 
-# Display
+# Display function
 Base.display(X::BPA{Set{K},V}) where {K,V} = begin
-    println("BPA{$K, $V} with $(length(X)) entries:");
+    println("BPA{$K, $V} with $(length(X)) entries:")
     for (k, v) in X
         if k != X.Ω
-            println("    {$(join(k, ','))} => $v");
+            println("  {$(join(k, ", "))} => $v")
         end
     end
-    println("    {$(join(X.Ω, ','))} => $(X[X.Ω])");
+    println("  {$(join(X.Ω, ", "))} => $(X[X.Ω])")
+    # TODO Align lines properly
 end
+
+# TODO BPA for numeric sets as focal elements (see "earthquake example")
 
 """
     bpa(X...)
