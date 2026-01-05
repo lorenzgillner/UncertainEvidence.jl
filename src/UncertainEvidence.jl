@@ -9,13 +9,13 @@ import Base: @warn,
     issubset, isdisjoint, isempty
     Iterators.product
 
-import Combinatorics: combinations
-
 export
-    BPA, bpa,
+    BPA, bpa, BaseType,
     focalelements, masses, omega,
-    redistribute!,
-    bel, pls
+    redistribute!
+include("bpa.jl")
+
+export bel, pls
 include("dst.jl")
 
 export combine_dempster, combine_yager
