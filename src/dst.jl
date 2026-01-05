@@ -20,15 +20,15 @@ struct BPA{K<:Any,V<:BaseType} <: AbstractDict{K,V}
     self::Dict{K,V}
     Ω::K
 
-    # Default constructor; ensure all subsets except ∅ are present
+    # Default constructor; ensure all subsets except ∅ and Ω are present
     function BPA{K,V}(d::Dict{K,V}, Ω::K) where {K<:AbstractSet,V<:BaseType}
-        all_elements = wrapset.(collect(combinations(collect(Ω), length(Ω) - 1)))
+        all_combinations = wrapset.(collect(combinations(collect(Ω), length(Ω) - 1)))
 
-        set_diff = setdiff(all_elements, keys(d))
+        set_diff = setdiff(all_combinations, keys(d))
 
         for k in set_diff
             if isdisjoint(k, Ω)
-                throw(ArgumentError("Focal element $k is not a subset of Ω=$Ω"))
+                throw(ArgumentError("Focal element $k is not a subset of Ω = $Ω"))
             end
 
             d[k] = zero(V)
