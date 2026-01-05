@@ -1,51 +1,82 @@
 using UncertainEvidence
-
 using Test
-using LazySets
-using LinearAlgebra
 
 @testset verbose = true "UncertainEvidence" begin
 	@testset "BPA creation" begin
-		@testset "From Dict, with explicit Ω" begin
-			d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5, Set([:a, :b]) => 0.0)
-			X = BPA(d, Ω = Set([:a, :b]))
+		@testset "From Dict" begin
+			@testset "With explicit Ω" begin
+				d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5, Set([:a, :b]) => 0.0)
+				Ω = Set([:a, :b])
+				X = BPA(d, Ω)
 
-			@test X[:a] == 0.5
-			@test X[:b] == 0.5
-			@test length(X) == 3
-			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
-			@test omega(X) == Set([:a, :b])
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
+
+			@testset "With explicit Ω (as kwarg)" begin
+				d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5)
+				X = BPA(d, Ω=Set([:a, :b]))
+
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
+
+			@testset "With implicit Ω" begin
+				d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5)
+				X = BPA(d)
+
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
+
+			@testset "Splat operator" begin
+				d = Dict(Set([:a]) => 0.5, Set([:b]) => 0.5)
+				X = BPA(d...)
+
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
 		end
 
-		@testset "From Dict, with explicit Ω (as argument)" begin
-			X = BPA(Dict(Set([:a]) => 0.5, Set([:b]) => 0.5), Ω = Set([:a, :b]))
+		@testset "From Pairs" begin
+			@testset "With explicit Ω" begin
+				X = BPA(:a => 0.5, :b => 0.5; Ω=Set([:a,:b]))
 
-			@test X[:a] == 0.5
-			@test X[:b] == 0.5
-			@test length(X) == 3
-			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
-			@test omega(X) == Set([:a, :b])
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
+
+			@testset "With implicit Ω" begin
+				X = BPA(:a => 0.5, :b => 0.5)
+
+				@test X[:a] == 0.5
+				@test X[:b] == 0.5
+				@test X[[:a,:b]] == 0.0
+				@test length(X) == 3
+				@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
+				@test omega(X) == Set([:a, :b])
+			end
 		end
-
-		@testset "From Dict, with explicit Ω" begin
-			X = BPA(Dict(Set([:a]) => 0.5, Set([:b]) => 0.5, Set([:a, :b]) => 0.0))
-
-			@test X[:a] == 0.5
-			@test X[:b] == 0.5
-			@test length(X) == 3
-			@test focalelements(X) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
-			@test omega(X) == Set([:a, :b])
-		end
-
-		# @testset "From Pairs" begin
-		# 	A = BPA(:a => 0.2, :b => 0.8)
-
-		# 	@test A[:a] == 0.2
-		# 	@test A[:b] == 0.8
-		# 	@test length(A) == 3
-		# 	@test focalelements(A) == Set([Set([:a]), Set([:b]), Set([:a, :b])])
-		# 	@test omega(A) == Set([:a, :b])
-		# end
 
 		# @testset "Advanced"
 		# 	# Test correct redistribution of masses when using `bpa`

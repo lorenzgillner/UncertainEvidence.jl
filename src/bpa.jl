@@ -1,53 +1,59 @@
-import Combinatorics: combinations
+import Combinatorics: powerset
 
-const BaseType = Number;
-
-wrapset(x<:AbstractArray) = Set(x)
+wrapset(x::T) where {T<:AbstractArray} = Set(x)
 wrapset(x) = x isa AbstractSet ? x : Set([x])
 
 deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : typeof(k) for k in keys(d)])
 
 """
-    BPA{K,V} where {K<:Set{Any}, V<:Number}
+    BPA{K,V} where {K<:AbstractSet, V<:Number}
 
 A basic probability assignment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
 
-Use `bpa` to create automatically normalized BPAs.
-Otherwise, use `redistribute!` for normalization.
-
 See also: [`bpa`](@ref), [`redistribute!`](@ref).
 """
-struct BPA{K<:Any,V<:BaseType} <: AbstractDict{K,V}
-    self::Dict{K,V}
-    Ω::K
+struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
+    m::Dict{Set{K},V}
+    Ω::Set{K}
 
-    function BPA{K,V}(d::Dict{K,V}, Ω::K) where {K<:AbstractSet,V<:BaseType}
-        all_combinations = wrapset.(collect(combinations(collect(Ω))))
+    function BPA{K,V}(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number}
+        ks = keys(d)
 
-        set_diff = setdiff(all_combinations, keys(d))
+        all_combinations = wrapset.(collect(powerset(collect(Ω), 1, length(Ω) - 1)))
 
-        for k in set_diff
+        implicit_combinations = setdiff(all_combinations, ks)
+
+        for k in implicit_combinations
             if isdisjoint(k, Ω)
-                throw(ArgumentError("Focal element $k is not a subset of Ω = $Ω"))
+                throw(ArgumentError("Focal element $k is not a subset of Ω"))
             end
 
             d[k] = zero(V)
         end
 
-        # The mass of ∅ is always implicitly zero
+        if !in(Ω, ks)
+            d[Ω] = one(V) - sum(values(d))
+        end
+
+        if sum(values(d)) > one(V)
+            @warn "Sum of masses is greater than one. Consider redistributing"
+        end
+
         new{K,V}(d, Ω)
     end
 end
 
-# Constructor for BPA without Ω; deduce Ω from keys
-function BPA(d::Dict{K,V}) where {K<:AbstractSet,V<:BaseType}
-    Ω = reduce(union, keys(d))
-    BPA{K,V}(d, Ω)
+BPA(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number} = BPA{K,V}(d, Ω)
+
+# Constructor for BPA with optional Ω; deduce Ω from keys if not supplied
+function BPA(d::Dict{Set{K},V}; Ω=nothing) where {K<:Any,V<:Number}
+    ω = isnothing(Ω) ? reduce(union, keys(d)) : Ω
+    BPA(d, ω)
 end
 
 # Constructor for non-set keys
-function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:BaseType}
+function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:Number}
     S = Set{deducetype(d)}
 
     if S != typeof(Ω)
@@ -60,13 +66,13 @@ function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:BaseType}
         dd[wrapset(k)] = v
     end
 
-    BPA{S,V}(dd, Ω)
+    BPA(dd, Ω)
 end
 
-BPA(d::Dict{K,V}, Ω::AbstractArray{K}) where {K<:Any,V<:BaseType} = BPA(d, wrapset(Ω))
+BPA(d::Dict{K,V}, Ω::AbstractArray{K}) where {K<:Any,V<:Number} = BPA(d, wrapset(Ω))
 
 # Constructor for non-set keys without Ω; infer Ω from keys
-function BPA(d::Dict{K,V}) where {K<:Any,V<:BaseType}
+function BPA(d::Dict{K,V}) where {K<:Any,V<:Number}
     S = Set{deducetype(d)}
 
     dd = Dict{S,V}()
@@ -75,7 +81,7 @@ function BPA(d::Dict{K,V}) where {K<:Any,V<:BaseType}
         dd[wrapset(k)] = v
     end
 
-    BPA{S,V}(dd)
+    BPA(dd)
 end
 
 BPA() = throw(ArgumentError("Cannot create an empty BPA"))
@@ -93,25 +99,32 @@ BPA(ps::Pair...; Ω=nothing) = isnothing(Ω) ? BPA(Dict(ps)) : BPA(Dict(ps), Ω)
 # BPA{K,V}(itr) where {K,V} = BPA(Dict{K,V}(itr))
 
 # AbstractDict interface
-Base.length(X::BPA) = length(X.self)
+Base.length(X::BPA) = length(X.m)
 
-Base.iterate(X::BPA) = iterate(X.self)
-Base.iterate(X::BPA, i) = iterate(X.self, i)
+Base.iterate(X::BPA) = iterate(X.m)
+Base.iterate(X::BPA, i) = iterate(X.m, i)
 
-Base.keys(X::BPA) = keys(X.self)
-Base.values(X::BPA) = values(X.self)
-Base.pairs(X::BPA) = pairs(X.self)
+Base.keys(X::BPA) = keys(X.m)
+Base.values(X::BPA) = values(X.m)
+Base.pairs(X::BPA) = pairs(X.m)
 
-Base.getindex(X::BPA{Set{K},V}, k::K) where {K,V} = getindex(X.self, wrapset(k))
-Base.getindex(X::BPA{Set{K},V}, k::Set{K}) where {K,V} = getindex(X.self, k)
-Base.setindex!(X::BPA{K,V}, v::V, k::K) where {K,V} = (X.self[k] = v)
+Base.getindex(X::BPA{K,V}, k::K) where {K,V} = getindex(X.m, wrapset(k))
+Base.getindex(X::BPA{K,V}, k::Array{K}) where {K,V} = (k == []) ? zero(K) : getindex(X.m, wrapset(k))
+Base.getindex(X::BPA{K,V}, k::Set{K}) where {K,V} = (k == Set{K}()) ? zero(K) : getindex(X.m, k)
 
-Base.eltype(X::BPA) = eltype(X.self)
+function Base.setindex!(X::BPA{K,V}, v::V, k::U) where {K,V,U<:Union{K,Array{K},Set{K}}}
+    if isdisjoint(wrapset(k), omega(X))
+        throw(ArgumentError("$sk is not a focal element of Ω"))
+    end
+    X.m[k] = v
+end
+
+Base.eltype(X::BPA) = eltype(X.m)
 
 # BPA-specific accessor aliases
 # TODO rename these
-focalelements(X::BPA) = keys(X.self)
-masses(X::BPA) = values(X.self)
+focalelements(X::BPA) = keys(X.m)
+masses(X::BPA) = values(X.m)
 omega(X::BPA) = X.Ω
 
 # Display function
@@ -128,26 +141,26 @@ end
 
 # TODO BPA for numeric sets as focal elements (see "earthquake example")
 
-"""
-    bpa(X...)
+# """
+#     bpa(X...)
 
-Create a normalized basic probability assignment (BPA) structure
-from pairs of mass assignments `X`.
+# Create a normalized basic probability assignment (BPA) structure
+# from pairs of mass assignments `X`.
 
-# Examples
-```juliadoctest
-julia> A = bpa("a" => 0.1, "b" => 0.2)
-BPA{Char, Float64} with 3 entries:
-    {'a'}      => 0.1
-    {'b'}      => 0.2
-    {'a', 'b'} => 0.7
-```
+# # Examples
+# ```juliadoctest
+# julia> A = bpa("a" => 0.1, "b" => 0.2)
+# BPA{Char, Float64} with 3 entries:
+#     {'a'}      => 0.1
+#     {'b'}      => 0.2
+#     {'a', 'b'} => 0.7
+# ```
 
-See also: [`BPA`](@ref).
-"""
-function bpa(X...)
-    return redistribute!(BPA(X...))
-end
+# See also: [`BPA`](@ref).
+# """
+# function bpa(X...)
+#     return redistribute!(BPA(X...))
+# end
 
 """
     redistribute!(X)
@@ -157,7 +170,7 @@ Normalize a BPA so that the sum of all mass assignments is equal to 1.
 See also: [`BPA`](@ref), [`bpa`](@ref).
 """
 function redistribute!(X::BPA{K,V}) where {K,V}
-    real_one = one(BaseType)
+    real_one = one(Number)
 
     Ω = reduce(union, focalelements(X))
 
