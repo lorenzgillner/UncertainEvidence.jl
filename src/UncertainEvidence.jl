@@ -11,8 +11,8 @@ import Base: @warn,
 
 export
     BPA, bpa, BaseType,
-    focalelements, masses, omega,
-    redistribute!
+    focalelements, masses, totalmass,
+    frame, isnormal, normalize!
 include("bpa.jl")
 
 export bel, pls

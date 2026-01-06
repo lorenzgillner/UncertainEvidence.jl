@@ -1,6 +1,7 @@
 import Combinatorics: powerset
 
-wrapset(x::T) where {T<:AbstractArray} = Set(x)
+wrapset(x::T) where {T <: AbstractArray} = Set(x)
+wrapset(x::Tuple) = Set(x)
 wrapset(x) = x isa AbstractSet ? x : Set([x])
 
 deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : typeof(k) for k in keys(d)])
@@ -11,18 +12,16 @@ deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : ty
 A basic probability assignment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
 
-See also: [`bpa`](@ref), [`redistribute!`](@ref).
+See also: [`bpa`](@ref), [`normalize!`](@ref).
 """
 struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
     m::Dict{Set{K},V}
-    Ω::Set{K}
+    Ω::Set{K} # TODO Don't store the key twice; use a reference to it in `m` instead
 
     function BPA{K,V}(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number}
-        ks = keys(d)
-
         all_combinations = wrapset.(collect(powerset(collect(Ω), 1, length(Ω) - 1)))
 
-        implicit_combinations = setdiff(all_combinations, ks)
+        implicit_combinations = setdiff(all_combinations, keys(d))
 
         for k in implicit_combinations
             if isdisjoint(k, Ω)
@@ -32,13 +31,15 @@ struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
             d[k] = zero(V)
         end
 
-        if !in(Ω, ks)
-            d[Ω] = one(V) - sum(values(d))
+        total_mass = sum(values(d))
+
+        if !haskey(d, Ω)
+            d[Ω] = total_mass < one(V) ? one(V) - total_mass : zero(V)
         end
 
-        if sum(values(d)) > one(V)
-            @warn "Sum of masses is greater than one. Consider redistributing"
-        end
+        # if sum(values(d)) > one(V)
+        #     @warn "Sum of masses is greater than one"
+        # end
 
         new{K,V}(d, Ω)
     end
@@ -84,19 +85,13 @@ function BPA(d::Dict{K,V}) where {K<:Any,V<:Number}
     BPA(dd)
 end
 
-BPA() = throw(ArgumentError("Cannot create an empty BPA"))
+BPA() = throw(ArgumentError("Can't create a BPA from nothing; the mass of ∅ must zero"))
 
 # Convenience constructors
 BPA(d::Dict; Ω=nothing) = isnothing(Ω) ? BPA(d) : BPA(d, Ω)
 BPA(ps::Pair...; Ω=nothing) = isnothing(Ω) ? BPA(Dict(ps)) : BPA(Dict(ps), Ω)
 
-# BPA(ps::Pair...) = BPA(Dict(ps))
-# BPA(ps::Pair{K,V}...) where {K,V} = BPA(Dict{K,V}(ps))
-# BPA{K,V}(ps::Pair{K,V}...) where {K,V} = BPA{K,V}(Dict{K,V}(ps))
-
-# BPA(itr) = BPA(Dict(itr))
-# BPA(itr, Ω) = BPA(Dict(itr), Ω)
-# BPA{K,V}(itr) where {K,V} = BPA(Dict{K,V}(itr))
+# TODO BPA type for sets of real numbers (see "earthquake example")
 
 # AbstractDict interface
 Base.length(X::BPA) = length(X.m)
@@ -108,12 +103,14 @@ Base.keys(X::BPA) = keys(X.m)
 Base.values(X::BPA) = values(X.m)
 Base.pairs(X::BPA) = pairs(X.m)
 
+Base.getindex(X::BPA{K,V}) where {K,V} = zero(V)
 Base.getindex(X::BPA{K,V}, k::K) where {K,V} = getindex(X.m, wrapset(k))
-Base.getindex(X::BPA{K,V}, k::Array{K}) where {K,V} = (k == []) ? zero(K) : getindex(X.m, wrapset(k))
-Base.getindex(X::BPA{K,V}, k::Set{K}) where {K,V} = (k == Set{K}()) ? zero(K) : getindex(X.m, k)
+Base.getindex(X::BPA{K,V}, ks::K...) where {K,V} = getindex(X.m, wrapset(ks))
+Base.getindex(X::BPA{K,V}, k::Array{K}) where {K,V} = (k == []) ? zero(V) : getindex(X.m, wrapset(k))
+Base.getindex(X::BPA{K,V}, k::Set{K}) where {K,V} = (k == Set{K}()) ? zero(V) : getindex(X.m, k)
 
 function Base.setindex!(X::BPA{K,V}, v::V, k::U) where {K,V,U<:Union{K,Array{K},Set{K}}}
-    if isdisjoint(wrapset(k), omega(X))
+    if isdisjoint(wrapset(k), frame(X))
         throw(ArgumentError("$sk is not a focal element of Ω"))
     end
     X.m[k] = v
@@ -122,16 +119,18 @@ end
 Base.eltype(X::BPA) = eltype(X.m)
 
 # BPA-specific accessor aliases
-# TODO rename these
 focalelements(X::BPA) = keys(X.m)
 masses(X::BPA) = values(X.m)
-omega(X::BPA) = X.Ω
+totalmass(X::BPA) = sum(values(X.m))
+frame(X::BPA) = X.Ω
+
+isnormal(X::BPA{K,V}) where {K,V} = totalmass(X) == one(V)
 
 # Display function
 Base.display(X::BPA{Set{K},V}) where {K,V} = begin
     println("BPA{$K, $V} with $(length(X)) entries:")
     for (k, v) in X
-        if k != omega(X)
+        if k != frame(X)
             println("  {$(join(k, ", "))} => $v")
         end
     end
@@ -139,55 +138,23 @@ Base.display(X::BPA{Set{K},V}) where {K,V} = begin
     # TODO Align lines properly
 end
 
-# TODO BPA for numeric sets as focal elements (see "earthquake example")
-
-# """
-#     bpa(X...)
-
-# Create a normalized basic probability assignment (BPA) structure
-# from pairs of mass assignments `X`.
-
-# # Examples
-# ```juliadoctest
-# julia> A = bpa("a" => 0.1, "b" => 0.2)
-# BPA{Char, Float64} with 3 entries:
-#     {'a'}      => 0.1
-#     {'b'}      => 0.2
-#     {'a', 'b'} => 0.7
-# ```
-
-# See also: [`BPA`](@ref).
-# """
-# function bpa(X...)
-#     return redistribute!(BPA(X...))
-# end
-
 """
-    redistribute!(X)
+    normalize!(X)
 
 Normalize a BPA so that the sum of all mass assignments is equal to 1.
 
 See also: [`BPA`](@ref), [`bpa`](@ref).
 """
-function redistribute!(X::BPA{K,V}) where {K,V}
-    real_one = one(Number)
+function normalize!(X::BPA{K,V}) where {K,V}
+    total_mass = totalmass(X)
 
-    Ω = reduce(union, focalelements(X))
-
-    if Ω ∉ focalelements(X)
-        X[Ω] = zero(V)
-    end
-
-    total_mass = sum(masses(X))
-
-    if total_mass < real_one
+    if total_mass < one(V)
         # If the sum of all focal elements, including Ω, is less
-        # than 1, the remainder must be added to Ω.
-        remainder = real_one - total_mass
-        X[Ω] += remainder
-    elseif total_mass > real_one
-        # Normalize masses if their sum is greater than one;
-        # in the case of intervals, strict relations apply
+        # than one, the remainder must be added to Ω.
+        remainder = one(V) - total_mass
+        X[frame(X)] += remainder
+    elseif total_mass > one(V)
+        # Normalize masses if their sum is strictly greater than one
         for (k, v) in X
             X[k] = v / total_mass
         end
