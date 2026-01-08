@@ -1,37 +1,37 @@
 """
-    bel(e, X)
+    bel(A, X)
 
-Calculate the belief value for a focal element `e` in a BPA `X`.
+Calculate the belief value for a focal element `A` in a BPA `X`.
 
 See also: [`BPA`](@ref), [`pls`](@ref).
 """
-function bel(e, X::BPA)
-    rv = zero(BaseType)
+function bel(A, X::BPA{K,V}) where {K,V}
+    belief = zero(V)
 
-    for (k, v) in X
-        if issubset(k, e)
-            rv += v
+    for (B, MB) in X
+        if issubset(B, A)
+            belief += MB
         end
     end
 
-    return rv
+    return belief
 end
 
 """
-    pls(e, X)
+    pls(A, X)
 
-Calculate plausibility value for a focal element `e` in a BPA `X`.
+Calculate plausibility value for a focal element `A` in a BPA `X`.
 
 See also: [`BPA`](@ref), [`bel`](@ref).
 """
-function pls(e, X::BPA)
-    rv = zero(BaseType)
+function pls(A, X::BPA{K,V}) where {K,V}
+    plausibility = zero(V)
 
-    for (k, v) in X
-        if !isdisjoint(k, e)
-            rv += v
+    for (B, MB) in X
+        if !isdisjoint(B, A)
+            plausibility += MB
         end
     end
 
-    return rv
+    return plausibility
 end

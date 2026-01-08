@@ -1,13 +1,13 @@
 import Combinatorics: powerset
 
-wrapset(x::T) where {T <: AbstractArray} = Set(x)
+wrapset(x::T) where {T<:AbstractArray} = Set(x)
 wrapset(x::Tuple) = Set(x)
 wrapset(x) = x isa AbstractSet ? x : Set([x])
 
 deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : typeof(k) for k in keys(d)])
 
 """
-    BPA{K,V} where {K<:AbstractSet, V<:Number}
+    BPA{K,V} where {K<:AbstractSet,V<:Number}
 
 A basic probability assignment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
@@ -109,11 +109,11 @@ Base.getindex(X::BPA{K,V}, ks::K...) where {K,V} = getindex(X.m, wrapset(ks))
 Base.getindex(X::BPA{K,V}, k::Array{K}) where {K,V} = (k == []) ? zero(V) : getindex(X.m, wrapset(k))
 Base.getindex(X::BPA{K,V}, k::Set{K}) where {K,V} = (k == Set{K}()) ? zero(V) : getindex(X.m, k)
 
-function Base.setindex!(X::BPA{K,V}, v::V, k::U) where {K,V,U<:Union{K,Array{K},Set{K}}}
+function Base.setindex!(X::BPA{K,V}, v::V, k::U) where {K,V,U<:Union{K,Array{K},Set{K},Tuple{K}}}
     if isdisjoint(wrapset(k), frame(X))
-        throw(ArgumentError("$sk is not a focal element of Ω"))
+        throw(ArgumentError("$sk is not a valid focal element"))
     end
-    X.m[k] = v
+    X.m[wrapset(k)] = v
 end
 
 Base.eltype(X::BPA) = eltype(X.m)
@@ -127,7 +127,8 @@ frame(X::BPA) = X.Ω
 isnormal(X::BPA{K,V}) where {K,V} = totalmass(X) == one(V)
 
 # Display function
-Base.display(X::BPA{Set{K},V}) where {K,V} = begin
+# TODO Use PrettyTables.jl
+Base.display(X::BPA{K,V}) where {K,V} = begin
     println("BPA{$K, $V} with $(length(X)) entries:")
     for (k, v) in X
         if k != frame(X)
@@ -159,7 +160,7 @@ function normalize!(X::BPA{K,V}) where {K,V}
             X[k] = v / total_mass
         end
     else
-        # `total_mass` is equal to 1; do nothing.
+        # `total_mass` must be equal to 1; do nothing.
     end
 
     return X
