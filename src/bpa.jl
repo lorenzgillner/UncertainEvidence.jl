@@ -1,4 +1,5 @@
 import Combinatorics: powerset
+import PrettyTables: pretty_table
 
 wrapset(x::T) where {T<:AbstractArray} = Set(x)
 wrapset(x::Tuple) = Set(x)
@@ -36,10 +37,6 @@ struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
         if !haskey(d, Ω)
             d[Ω] = total_mass < one(V) ? one(V) - total_mass : zero(V)
         end
-
-        # if sum(values(d)) > one(V)
-        #     @warn "Sum of masses is greater than one"
-        # end
 
         new{K,V}(d, Ω)
     end
@@ -127,16 +124,13 @@ frame(X::BPA) = X.Ω
 isnormal(X::BPA{K,V}) where {K,V} = totalmass(X) == one(V)
 
 # Display function
-# TODO Use PrettyTables.jl
 Base.display(X::BPA{K,V}) where {K,V} = begin
     println("BPA{$K, $V} with $(length(X)) entries:")
-    for (k, v) in X
-        if k != frame(X)
-            println("  {$(join(k, ", "))} => $v")
-        end
-    end
-    println("  {$(join(X.Ω, ", "))} => $(X[X.Ω])")
-    # TODO Align lines properly
+    header = ["Focal element", "Mass"]
+    tabular = Matrix{Any}(missing, length(X), 2)
+    tabular = vcat((["{$(join(k, ','))}" v] for (k, v) in X)...)
+    sort!(tabular; dims=1, by=length)
+    pretty_table(tabular; column_labels=header, alignment=[:l, :r], compact_printing=true)
 end
 
 """
