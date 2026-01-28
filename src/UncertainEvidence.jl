@@ -9,16 +9,15 @@ import Base: @warn,
     issubset, isdisjoint, isempty
     Iterators.product
 
-export
-    BPA, bpa, BaseType,
-    focalelements, masses, totalmass,
-    frame, isnormal, normalize!
 include("bpa.jl")
+export
+    BPA, BaseType,
+    focalelements, masses, totalmass, frame
 
-export bel, pls
 include("dst.jl")
+export bel, pls, isnormal, normalize!
 
-export combine_dempster, combine_yager
 include("combinations.jl")
+export combine_dempster, combine_yager
 
-end
+end # module

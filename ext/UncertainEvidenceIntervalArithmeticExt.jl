@@ -3,10 +3,10 @@ module UncertainEvidenceIntervalArithmeticExt
 using UncertainEvidence
 using IntervalArithmetic
 
-function UncertainEvidence.normalize!(X::BPA{K,Interval{V}}) where {K,V}
+function UncertainEvidence.normalize!(X::BPA{K,Interval{T}}) where {K,T}
     total_mass = UncertainEvidence.totalmass(X)
 
-    interval_one = one(Interval{V})
+    interval_one = one(Interval{T})
 
     if IntervalArithmetic.strictprecedes(total_mass, interval_one)
         remainder = interval_one - total_mass

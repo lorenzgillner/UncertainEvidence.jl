@@ -55,7 +55,7 @@ using Test
 
             @testset "Non-set types" begin
                 d = Dict(:a => 0.5, :b => 0.5)
-                X = BPA(d...)
+                X = BPA(d)
 
                 @test X[:a] == 0.5
                 @test X[:b] == 0.5

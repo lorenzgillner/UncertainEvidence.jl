@@ -12,45 +12,45 @@ deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : ty
 
 A basic probability assignment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
-
-See also: [`bpa`](@ref), [`normalize!`](@ref).
 """
 struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
-    m::Dict{Set{K},V}
-    Ω::Set{K} # TODO Don't store the key twice; use a reference to it in `m` instead
+    m::Dict{Set{K},V} # TODO Use two arrays instead
+    Ω::Set{K} # TODO Don't store the key twice; use a reference
 
     function BPA{K,V}(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number}
-        all_combinations = wrapset.(collect(powerset(collect(Ω), 1, length(Ω) - 1)))
-
-        implicit_combinations = setdiff(all_combinations, keys(d))
-
-        for k in implicit_combinations
-            if isdisjoint(k, Ω)
-                throw(ArgumentError("Focal element $k is not a subset of Ω"))
-            end
-
-            d[k] = zero(V)
-        end
-
-        total_mass = sum(values(d))
-
-        if !haskey(d, Ω)
-            d[Ω] = total_mass < one(V) ? one(V) - total_mass : zero(V)
-        end
-
         new{K,V}(d, Ω)
     end
 end
 
-BPA(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number} = BPA{K,V}(d, Ω)
+function BPA(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number}
+    all_combinations = wrapset.(collect(powerset(collect(Ω), 1, length(Ω) - 1)))
+
+    implicit_combinations = setdiff(all_combinations, keys(d))
+
+    for k in implicit_combinations
+        if isdisjoint(k, Ω)
+            throw(ArgumentError("Focal element $k is not a subset of Ω"))
+        end
+
+        d[k] = zero(V)
+    end
+
+    total_mass = sum(values(d))
+
+    if !haskey(d, Ω)
+        d[Ω] = total_mass < one(V) ? one(V) - total_mass : zero(V) # TODO handle intervals
+    end
+
+    BPA{K,V}(d, Ω)
+end
 
 # Constructor for BPA with optional Ω; deduce Ω from keys if not supplied
-function BPA(d::Dict{Set{K},V}; Ω=nothing) where {K<:Any,V<:Number}
-    ω = isnothing(Ω) ? reduce(union, keys(d)) : Ω
+function BPA(d::Dict{Set{K},V}; Ω=missing) where {K<:Any,V<:Number}
+    ω = ismissing(Ω) ? reduce(union, keys(d)) : Ω
     BPA(d, ω)
 end
 
-# Constructor for non-set keys
+# Constructor for BPA from non-set keys
 function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:Number}
     S = Set{deducetype(d)}
 
@@ -67,26 +67,19 @@ function BPA(d::Dict{K,V}, Ω::Set{K}) where {K<:Any,V<:Number}
     BPA(dd, Ω)
 end
 
-BPA(d::Dict{K,V}, Ω::AbstractArray{K}) where {K<:Any,V<:Number} = BPA(d, wrapset(Ω))
-
-# Constructor for non-set keys without Ω; infer Ω from keys
-function BPA(d::Dict{K,V}) where {K<:Any,V<:Number}
-    S = Set{deducetype(d)}
-
-    dd = Dict{S,V}()
-
-    for (k, v) in d
-        dd[wrapset(k)] = v
-    end
-
-    BPA(dd)
+# Constructor for BPA from non-set keys with optional Ω
+function BPA(d::Dict{K,V}; Ω=missing) where {K<:Any,V<:Number}
+    ω = ismissing(Ω) ? reduce(union, wrapset.(keys(d))) : Ω
+    BPA(d, ω)
 end
+
+BPA(d::Dict{K,V}, Ω::AbstractArray{K}) where {K<:Any,V<:Number} = BPA(d, wrapset(Ω))
 
 BPA() = throw(ArgumentError("Can't create a BPA from nothing; the mass of ∅ must zero"))
 
-# Convenience constructors
-BPA(d::Dict; Ω=nothing) = isnothing(Ω) ? BPA(d) : BPA(d, Ω)
-BPA(ps::Pair...; Ω=nothing) = isnothing(Ω) ? BPA(Dict(ps)) : BPA(Dict(ps), Ω)
+# BPA(d::Dict; Ω=missing) = ismissing(Ω) ? BPA(d) : BPA(d, Ω)
+BPA(ps::Pair...; Ω=missing) = BPA(Dict(ps); Ω=Ω)
+BPA(k::Array{Set{K}}, v::Array{V}) where {K,V} = BPA(Pairs(k, v))
 
 # TODO BPA type for sets of real numbers (see "earthquake example")
 
@@ -121,41 +114,11 @@ masses(X::BPA) = values(X.m)
 totalmass(X::BPA) = sum(values(X.m))
 frame(X::BPA) = X.Ω
 
-isnormal(X::BPA{K,V}) where {K,V} = totalmass(X) == one(V)
-
 # Display function
-Base.display(X::BPA{K,V}) where {K,V} = begin
-    println("BPA{$K, $V} with $(length(X)) entries:")
+Base.print(io::IO, X::BPA{K,V}; showzero=false) where {K,V} = begin
+    println(io, "BPA{$K, $V} with $(length(X)) entries:")
     header = ["Focal element", "Mass"]
-    tabular = Matrix{Any}(missing, length(X), 2)
-    tabular = vcat((["{$(join(k, ','))}" v] for (k, v) in X)...)
+    tabular = vcat((["$(join(k, ','))" v] for (k, v) in X if !iszero(v) || showzero)...)
     sort!(tabular; dims=1, by=length)
-    pretty_table(tabular; column_labels=header, alignment=[:l, :r], compact_printing=true)
-end
-
-"""
-    normalize!(X)
-
-Normalize a BPA so that the sum of all mass assignments is equal to 1.
-
-See also: [`BPA`](@ref), [`bpa`](@ref).
-"""
-function normalize!(X::BPA{K,V}) where {K,V}
-    total_mass = totalmass(X)
-
-    if total_mass < one(V)
-        # If the sum of all focal elements, including Ω, is less
-        # than one, the remainder must be added to Ω.
-        remainder = one(V) - total_mass
-        X[frame(X)] += remainder
-    elseif total_mass > one(V)
-        # Normalize masses if their sum is strictly greater than one
-        for (k, v) in X
-            X[k] = v / total_mass
-        end
-    else
-        # `total_mass` must be equal to 1; do nothing.
-    end
-
-    return X
+    pretty_table(io, tabular; column_labels=header, alignment=[:l, :r], compact_printing=true)
 end
