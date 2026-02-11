@@ -118,7 +118,7 @@ frame(X::BPA) = X.Ω
 Base.print(io::IO, X::BPA{K,V}; showzero=false) where {K,V} = begin
     println(io, "BPA{$K, $V} with $(length(X)) entries:")
     header = ["Focal element", "Mass"]
-    tabular = vcat((["$(join(k, ','))" v] for (k, v) in X if !iszero(v) || showzero)...)
-    sort!(tabular; dims=1, by=length)
+    tabular = vcat((["$(join(k, ','))" v] for (k, v) in X if (!iszero(v) || showzero))...)
+    tabular = tabular[sortperm(tabular[:,1], by=length),:]
     pretty_table(io, tabular; column_labels=header, alignment=[:l, :r], compact_printing=true)
 end
