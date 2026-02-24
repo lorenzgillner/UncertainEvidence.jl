@@ -13,12 +13,13 @@ deducetype(d::Dict) = reduce(promote_type, [k isa AbstractArray ? eltype(k) : ty
 A basic probability assignment (BPA) is the foundational data structure
 for calculations in the context of the Dempster-Shafer theory (DST).
 """
-struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
+mutable struct BPA{K<:Any,V<:Number} <: AbstractDict{Set{K},V}
     m::Dict{Set{K},V} # TODO Use two arrays instead
     Ω::Set{K} # TODO Don't store the key twice; use a reference
+    conflict::V
 
     function BPA{K,V}(d::Dict{Set{K},V}, Ω::Set{K}) where {K<:Any,V<:Number}
-        new{K,V}(d, Ω)
+        new{K,V}(d, Ω, zero(V))
     end
 end
 
@@ -114,11 +115,18 @@ masses(X::BPA) = values(X.m)
 totalmass(X::BPA) = sum(values(X.m))
 frame(X::BPA) = X.Ω
 
+function setconflict!(X::BPA{K,V}, c::V) where {K,V}
+    X.conflict = c
+end
+
 # Display function
-Base.print(io::IO, X::BPA{K,V}; showzero=false) where {K,V} = begin
+Base.print(io::IO, X::BPA{K,V}; showzero=false, showconflict=true) where {K,V} = begin
     println(io, "BPA{$K, $V} with $(length(X)) entries:")
     header = ["Focal element", "Mass"]
     tabular = vcat((["$(join(k, ','))" v] for (k, v) in X if (!iszero(v) || showzero))...)
     tabular = tabular[sortperm(tabular[:,1], by=length),:]
     pretty_table(io, tabular; column_labels=header, alignment=[:l, :r], compact_printing=true)
+    if showconflict
+        println(io, "Conflict = $(X.conflict)")
+    end
 end
