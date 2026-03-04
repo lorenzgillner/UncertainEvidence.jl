@@ -1,6 +1,6 @@
 name = "UncertainEvidence"
 uuid = "1a86d166-648f-46fd-af52-fbd54890c8f1"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Lorenz Gillner <lorenz.gillner@hs-wismar.de"]
 
 [deps]
